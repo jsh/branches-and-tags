@@ -1,0 +1,31 @@
+#!/bin/bash -eu
+
+getopts t: opt && shift $(( OPTIND -1 ))
+
+git rev-parse --git-dir &> /dev/null
+if [[ $# -eq 0 ]]; then
+  echo 'echo hello, world' > hello
+  chmod +x hello
+  diff - <(./hello) <<< "hello, world"
+  git add .
+  git commit -m"the canonical program"
+else
+  for i in "$@"; do
+    [ ${i:0:1} != '/' ] # relative paths & real files only
+    name="$PWD/$i"
+    rm -rf $name
+    if [[ ${name: -1:1} = '/' ]]; then
+      install -d $name
+      > $name/.gitkeep
+    else
+      install -d $(dirname $name)
+      echo "file $i" > $name
+    fi
+    git add .
+  done
+  comment="add file(s) $@"
+  git commit -m"$comment"
+fi
+if [[ "${OPTARG:-}" ]]; then
+  git tag $OPTARG
+fi

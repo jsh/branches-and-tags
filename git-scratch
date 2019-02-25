@@ -1,0 +1,91 @@
+#!/bin/bash -eu
+# create a scratch repo for experiments
+
+# checkout a branch,
+# make an easy-to-follow change
+checkout-and-mark() {
+  git checkout $1
+  echo "From branch $1" > README.$1      # make a change that lets you see what branch it's in
+  [ "$conflict" ] && mv README.$1 README # make all changes to the same file
+  git add .
+  git commit -m"commit in branch $1"     # use a commit message that names the branch, too
+}
+
+# error out
+die() { echo "$@" >&2; exit 1; }
+
+make_basic_repo() {
+  git init --quiet
+  touch .gitkeep
+  if [ "$fixed" ]; then
+    git config user.name root
+    git config user.email root@localhost.localdomain
+  fi
+  git add .
+  git commit -m "Initial commit"
+  git tag initial
+}
+
+parse_args() {
+  # now that we have a couple of args, let's parse with getopts
+
+  branched='' conflict='' copy='' fixed='' remoted='' # don't take these from the environment
+  local usage='usage: $0 [-b|-B] [-f] [-r|-R] [dirname]'
+  legal_flags=bBfrR
+
+  while getopts $legal_flags flag; do
+    case $flag in
+      b) branched=yes ;;
+      B) branched=yes conflict=yes ;;
+      f) fixed=yes     # fix times and committers constant at constant values
+         epoch="$(date -u --date='@0')"
+         export GIT_AUTHOR_DATE="$epoch"
+         export GIT_COMMITTER_DATE="$epoch"
+         ;;
+      r) remoted=yes  copy=yes ;;
+      R) remoted=yes ;;
+      # ?) die $usage   ;;
+    esac
+  done
+  shift $(( OPTIND - 1 ));
+
+  dir=${1:-scratch}
+}
+
+parse_args "$@"
+
+sync=/tmp/$dir.git
+if [ "${GIT_SCRATCH_REMOTE_USERDIRS:-}" ]; then
+  sync=/tmp/$LOGNAME/$dir.git
+fi
+# cleanliness is next to godliness
+rm -rf $dir $sync
+mkdir $dir  # complain if $dir exists but no -f flag
+cd $_
+
+make_basic_repo
+
+# special sauce
+if [[ "$branched" ]]; then  # make the branches
+  git branch davidian
+  checkout-and-mark davidian
+  checkout-and-mark master  # end up in master
+fi
+
+if [[ "$remoted" ]]; then   # make a remote
+  cd ..
+  git clone --bare --no-hardlinks $dir $sync
+
+  rm -rf $dir itchy scratchy        # remove the original
+
+  if [[ ! "$copy" ]]; then           # a single clone of the remote
+    git clone ssh://localhost$sync 
+  else                               # a pair of clones
+    for i in itchy scratchy; do
+      git clone ssh://localhost$sync $i
+      git -C $i config user.email "$i@localhost"
+    done
+    git -C itchy config user.name "Itchy Mouse"
+    git -C scratchy config user.name "Scratchy Cat"
+  fi
+fi

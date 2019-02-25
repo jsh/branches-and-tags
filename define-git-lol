@@ -1,1 +1,7 @@
-git config --global alias.lol 'log --all --decorate --oneline --graph'
+#!/bin/bash -eu
+# set up a convenient alias you can find all over the web
+#
+# 'git lol' is text, not a gui, so it works on terminals connected to headless servers, like cloud boxes.
+# (This script is idempotent, but you only need to run it once.  After that, just run 'git lol')
+
+git config --global alias.lol 'log --all --decorate --oneline --graph'  # log-a-dog

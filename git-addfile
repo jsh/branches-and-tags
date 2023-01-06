@@ -1,31 +1,76 @@
 #!/bin/bash -eu
 
-getopts t: opt && shift $(( OPTIND -1 ))
+die() { echo "$*"; exit 1; } >&2
 
-git rev-parse --git-dir &> /dev/null
-if [[ $# -eq 0 ]]; then
-  echo 'echo hello, world' > hello
-  chmod +x hello
-  diff - <(./hello) <<< "hello, world"
-  git add .
-  git commit -m"the canonical program"
-else
-  for i in "$@"; do
-    [ ${i:0:1} != '/' ] # relative paths & real files only
-    name="$PWD/$i"
-    rm -rf $name
-    if [[ ${name: -1:1} = '/' ]]; then
-      install -d $name
-      > $name/.gitkeep
-    else
-      install -d $(dirname $name)
-      echo "file $i" > $name
+parse-args() {
+    # Process optional args
+    #
+    # -h: help
+    # -t tagname: name to tag the commit
+	# bash lacks good arg parsing
+    usage="git addfile [-t tagname | -h] [file-or-dir ...]"
+    while getopts ":ht:" opt; do
+        case $opt in          
+            h) echo "usage: $usage" ; exit 0 ;;
+            t) tag=$OPTARG; shift 2;;
+            \?) echo "Invalid option: -$OPTARG" >&2; die "$usage" ;;
+            :) die "Option -$OPTARG requires an argument." >&2 ;;
+        esac
+    done
+}
+
+add-and-commit() {
+    # Add and commit everything new or changed in this directory
+    #
+    # Normally, these are separate steps,
+    # here, we're just cramming stuff in.
+    git add .                   # add everything
+    git commit -m"$@"           # commit it
+    if [[ "${tag:-}" ]]; then   # tag if requested
+      git tag $tag
     fi
-    git add .
-  done
-  comment="add file(s) $@"
-  git commit -m"$comment"
+}
+
+sanity-checks() {
+    # Does it make sense to run this script?
+    git rev-parse --git-dir &> /dev/null # in a git repo?
+}
+
+add-canonical-program() {
+    # The classic, hello, world as a shell script
+    echo 'echo hello, world' > hello        # create the program
+    chmod +x hello                          # make it executable
+    diff - <(./hello) <<< "hello, world"    # test it
+    add-and-commit "the canonical program"  # commit it
+    git add .                               # add it
+    git commit -m"the canonical program"    # commit it
+}
+
+create-file-or-directory() {
+    # Create a named file
+    [ ${name:0:1} == '/' ] &&                    # first character is a '/'? (`addfile /foo`)
+        die "relative paths only"                # only allow relative paths
+    name="$PWD/$name"                            # convert to absolute paths
+    [-e "$name"] && die "$name already exists"   # tread not on what's there
+    if [[ ${name: -1:1} = '/' ]]; then           # last character is a '/'? (`addfile foo/`)
+      install -d $name                           # add empty directory
+      > $name/.gitkeep                           # empty hidden file because
+                                                 # git ignores empty dirs
+    else                                         # `addfile foo/bar`
+      install -d $(dirname $name)                # create file in directory
+      echo "entry $name" > $name                 # real contents
+    fi
+}
+
+sanity-checks
+parse-args "$@"
+
+if [[ $# -eq 0 ]]; then
+    add-canonical-program    # we're done!
+    exit 0              
 fi
-if [[ "${OPTARG:-}" ]]; then
-  git tag $OPTARG
-fi
+
+for name in "$@"; do    # create each name on command line
+    create-file-or-directory $name
+done
+add-and-commit "add elements(s) $@"            # add & commit all

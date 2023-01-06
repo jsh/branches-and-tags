@@ -57,9 +57,8 @@ create-file-or-directory() {
         install -d $name                          # add empty directory
         > $name/.gitkeep                          # empty hidden file because
     else
-        name="$PWD/$name"                         # convert to absolute paths
         install -d $(dirname $name)               # create file in directory
-        echo "entry $name" > $name                # real contents
+        echo "file $name" > $name                # real contents
     fi
 }
 

@@ -7,7 +7,7 @@ parse-args() {
     #
     # -h: help
     # -t tagname: name to tag the commit
-	# bash lacks good arg parsing
+    # bash lacks good arg parsing
     usage="git addfile [-t tagname | -h] [file-or-dir ...]"
     while getopts ":ht:" opt; do
         case $opt in          
@@ -24,10 +24,11 @@ add-and-commit() {
     #
     # Normally, these are separate steps,
     # here, we're just cramming stuff in.
-    git add .                   # add everything
-    git commit -m"$@"           # commit it
-    if [[ "${tag:-}" ]]; then   # tag if requested
-      git tag $tag
+    commit_message="$@"             # capture passed-in commit message
+    git add .                       # add everything
+    git commit -m"$commit_message"  # commit it
+    if [ "${tag:-}" ]; then         # tag if requested
+        git tag $tag
     fi
 }
 
@@ -47,25 +48,25 @@ add-canonical-program() {
 }
 
 create-file-or-directory() {
-    # Create a named file
-    [ ${name:0:1} == '/' ] &&                    # first character is a '/'? (`addfile /foo`)
-        die "relative paths only"                # only allow relative paths
-    name="$PWD/$name"                            # convert to absolute paths
-    [-e "$name"] && die "$name already exists"   # tread not on what's there
-    if [[ ${name: -1:1} = '/' ]]; then           # last character is a '/'? (`addfile foo/`)
-      install -d $name                           # add empty directory
-      > $name/.gitkeep                           # empty hidden file because
-                                                 # git ignores empty dirs
-    else                                         # `addfile foo/bar`
-      install -d $(dirname $name)                # create file in directory
-      echo "entry $name" > $name                 # real contents
+    # Create the named file/directory
+    name=$1                                       # capture passed-in name
+    [ -e "$name" ] && die "$name already exists"  # tread not on what's there
+    [ ${name:0:1} == '/' ] &&                     # first character is a '/'? (`addfile /foo`)
+        die "relative paths only"                 # only allow relative paths
+    if [ ${name: -1:1} == '/' ]; then             # last character is a '/'? (`addfile foo/`)
+        install -d $name                          # add empty directory
+        > $name/.gitkeep                          # empty hidden file because
+    else
+        name="$PWD/$name"                         # convert to absolute paths
+        install -d $(dirname $name)               # create file in directory
+        echo "entry $name" > $name                # real contents
     fi
 }
 
 sanity-checks
 parse-args "$@"
 
-if [[ $# -eq 0 ]]; then
+if [ $# -eq 0 ]; then
     add-canonical-program    # we're done!
     exit 0              
 fi

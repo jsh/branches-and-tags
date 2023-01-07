@@ -55,10 +55,10 @@ create-file-or-directory() {
         die "relative paths only"                 # only allow relative paths
     if [ ${name: -1:1} == '/' ]; then             # last character is a '/'? (`addfile foo/`)
         install -d $name                          # add empty directory
-        > $name/.gitkeep                          # empty hidden file because
+        > $name/.gitkeep                          # empty hidden file because Git ignores empty directories
     else
         install -d $(dirname $name)               # create file in directory
-        echo "file $name" > $name                # real contents
+        echo "file $name" > $name                 # real contents
     fi
 }
 

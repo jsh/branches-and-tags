@@ -18,10 +18,11 @@ Define a simple git alias that you can find all over the web.
 
 This script lets you define `git lol` as a global alias (not confined to one project).
 The command shows a repository's history, tags, and branches.
+
 The display uses ASCII-graphics, so it's fast and you can use it from the command-line.
 
-You can even ssh into a remote server, and type `git lol`
-to look at the structure of a remote repo. 
+If you install and run it on a remote machine, even a headless server, then whenever you `ssh` in you can use `git lol`
+to look at the structures of remote repos. No GUI required.
 
 ## `git-addfile`
 

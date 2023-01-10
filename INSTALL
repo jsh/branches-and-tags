@@ -1,0 +1,11 @@
+Running `define-git-lol` once, as yourself, defines the `git lol` alias, globally.
+This makes `git lol` available to all your projects, for this and for future sessions.
+
+Installing `git-addfile` and `git-scratch` somewhere in your path,
+makes `addfile` and `scratch` into new, Git subcommands.
+For example,
+
+```
+mv git-* ~/bin/
+git scratch       # notice, no "-" between "git" and "scratch".
+```

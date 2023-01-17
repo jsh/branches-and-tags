@@ -1,0 +1,10 @@
+#!/usr/bin/bash
+fail() {
+    echo "$*"
+    echo "${FUNCNAME[1]}: FAIL"
+    exit 1
+}
+
+pass() {
+    echo "${FUNCNAME[1]}: PASS"
+}

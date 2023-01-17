@@ -1,0 +1,72 @@
+#!/bin/bash -eu
+
+source nscratch
+source assert
+
+test-cleanup-repo()
+{
+    # cleanup-repo removes named repo if it can,
+    # succeeds if it doesn't exist.
+    install -d foo/bar
+    chmod 000 foo
+    ! cleanup-repo foo 2> /dev/null ||
+        assert "cleanup director with perms 000 succeeds"
+
+    chmod 777 foo
+    cleanup-repo foo
+    [[ ! -e foo ]] || assert "after cleanup, foo present"
+
+    cleanup-repo foo || assert "cleanup non-existent foo fails"
+    pass
+}
+
+test-remove-old-repos()
+{
+    # remove-old-repos removes repos in $all_repos
+    # doesn't remove others.
+    for repo in $all_repos sentinel; do
+        git init -q $repo
+    done
+    remove-old-repos
+    for repo in $all_repos; do
+        [[ ! -d $repo ]] || assert "$repo still present"
+    done
+    [[ -d sentinel ]] || assert "sentinel missing"
+    rm -rf sentinel
+    pass
+}
+
+test-make-scratch() {
+    make-scratch 
+    [[ $(git -C scratch rev-parse --git-dir 2> /dev/null) == .git ]] || 
+        assert "missing scratch repo"
+    [[ $(git -C scratch tag -l) == initial ]] ||
+        assert "initial tag missing"
+    [[ ! "$(ls scratch)" ]] ||
+        assert "non-hidden files in scratch"
+    [[ "$(git -C scratch ls-files)" == .gitkeep ]] ||
+        assert "unexpected output from `git ls-files`"
+    [[ ! "$(git -C scratch status -u -s)" ]] ||
+        assert "untracked files"
+    rm -rf scratch
+    pass
+}
+
+test-make-simple-branch() {
+	make-scratch
+	make-simple-branch
+	[[ $(git -C scratch branch --show-current) == master ]] ||
+		assert "current branch not master"
+	[[ $(git -C scratch checkout davidian 2>/dev/null) ]] ||
+		assert "cannot checkout davidian"
+	[[ $( git -C scratch branch -a | wc -l) == 2 ]] ||
+		assert "wrong number of branches"
+	pass
+}
+
+rm -rf scratch
+test-cleanup-repo
+test-remove-old-repos
+test-make-scratch
+test-make-simple-branch
+pass

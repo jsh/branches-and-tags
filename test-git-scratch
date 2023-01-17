@@ -1,7 +1,9 @@
 #!/bin/bash -eu
 
 source nscratch
-source assert
+source status
+expected=".gitkeep
+README.md"
 
 test-cleanup-repo()
 {
@@ -10,13 +12,13 @@ test-cleanup-repo()
     install -d foo/bar
     chmod 000 foo
     ! cleanup-repo foo 2> /dev/null ||
-        assert "cleanup director with perms 000 succeeds"
+        die "cleanup director with perms 000 succeeds"
 
     chmod 777 foo
     cleanup-repo foo
-    [[ ! -e foo ]] || assert "after cleanup, foo present"
+    [[ ! -e foo ]] || die "after cleanup, foo present"
 
-    cleanup-repo foo || assert "cleanup non-existent foo fails"
+    cleanup-repo foo || die "cleanup non-existent foo fails"
     pass
 }
 
@@ -29,25 +31,25 @@ test-remove-old-repos()
     done
     remove-old-repos
     for repo in $all_repos; do
-        [[ ! -d $repo ]] || assert "$repo still present"
+        [[ ! -d $repo ]] || die "$repo still present"
     done
-    [[ -d sentinel ]] || assert "sentinel missing"
+    [[ -d sentinel ]] || die "sentinel missing"
     rm -rf sentinel
     pass
 }
 
 test-make-scratch() {
     make-scratch 
-    [[ $(git -C scratch rev-parse --git-dir 2> /dev/null) == .git ]] || 
-        assert "missing scratch repo"
+		[[ $(git -C scratch rev-parse --git-dir 2> /dev/null) == .git ]] || 
+        die "missing scratch repo"
     [[ $(git -C scratch tag -l) == initial ]] ||
-        assert "initial tag missing"
+        die "initial tag missing"
     [[ ! "$(ls scratch)" ]] ||
-        assert "non-hidden files in scratch"
+        die "non-hidden files in scratch"
     [[ "$(git -C scratch ls-files)" == .gitkeep ]] ||
-        assert "unexpected output from `git ls-files`"
+        die "unexpected output from `git ls-files`"
     [[ ! "$(git -C scratch status -u -s)" ]] ||
-        assert "untracked files"
+        die "untracked files"
     rm -rf scratch
     pass
 }
@@ -55,12 +57,16 @@ test-make-scratch() {
 test-make-simple-branch() {
 	make-scratch
 	make-simple-branch
+	[[ $( git -C scratch branch -a | wc -l) -eq 2 ]] ||
+		die "wrong number of branches"
 	[[ $(git -C scratch branch --show-current) == master ]] ||
-		assert "current branch not master"
-	[[ $(git -C scratch checkout davidian 2>/dev/null) ]] ||
-		assert "cannot checkout davidian"
-	[[ $( git -C scratch branch -a | wc -l) == 2 ]] ||
-		assert "wrong number of branches"
+		die "current branch not master"
+	[[ $(git -C scratch ls-files) == $expected ]] ||
+		die "unexpected files $(git -C scratch ls-files)"
+	git -C scratch checkout davidian 2> /dev/null ||
+	    die "cannot checkout davidian"
+	[[ $(git -C scratch ls-files) == $expected ]] ||
+		die "unexpected files $(git -C scratch ls-files)"
 	pass
 }
 

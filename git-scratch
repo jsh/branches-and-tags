@@ -4,10 +4,10 @@
 TMPDIR=/tmp               # if you want everything in /tmp
 TMPDIR=$PWD               # if you want everything right here
 
-SCRATCH=$TMPDIR/scratch   # the basic repo
-REMOTE_REPOS_DIRECTORY=$TMPDIR/remote_repos # on your far-away, Git server, "localhost"
-ITCHY=$TMPDIR/itchy       # a local clone, by Itchy Mouse
-SCRATCHY=$TMPDIR/scratchy # a local clone, by Scratchy Cat
+SCRATCH=$TMPDIR/scratch         # the basic repo
+REMOTE_REPO=$TMPDIR/scratch.git # on your far-away, Git server, "localhost"
+ITCHY=$TMPDIR/itchy             # a local clone, by Itchy Mouse
+SCRATCHY=$TMPDIR/scratchy       # a local clone, by Scratchy Cat
 
 die() { echo "$*"; exit 1; } >&2  # utility routine
 
@@ -33,14 +33,19 @@ parse-args() {
     fi
 }
 
+cleanup() {
+	# Remove file if it exists.
+	if [ -e repo ]; then           # make sure it's gone
+		rm -r $repo                # remove it
+	fi
+
 cleanup-old-locals() {
     # Clean out pre-existing experiments
     #
     # "Cleanliness is next to godliness, step 1"
     for local_repo in $SCRATCH $ITCHY $SCRATCHY; do
-        rm -rf $local_repo                    # remove it
         if [ -e $local_repo ]; then           # make sure it's gone
-            die "can't remove $local_repo"
+			rm -r $local_repo                    # remove it
         fi
     done
 }
@@ -51,14 +56,9 @@ cleanup-old-remote() {
     # "Cleanliness is next to godliness, step 2"
     # - Remove the "remote" if it's there
     # - Make sure any required parent directories exist
-    remote_repo=$REMOTE_REPOS_DIRECTORY/scratch.git
-    rm -rf $remote_repo                    # remove it
+    remote_repo=$REMOTE_REPO
     if [ -e $remote_repo ]; then           # make sure it's gone
-        die "cannot remove $remote_repo"
-    fi
-    install -d $REMOTE_REPOS_DIRECTORY || # always succeeds, won't remove pre-existing directories
-        die "cannot create $REMOTE_REPOS_DIRECTORY"
-
+		rm -r $remote_repo
 }
 
 make-scratch() {
@@ -107,8 +107,7 @@ make-remote-repo() {
     # N.B.: this assumes the remote repo is really created on localhost
 
     cleanup-old-remote
-    git clone --quiet --bare $SCRATCH $REMOTE_REPOS_DIRECTORY/scratch.git  # assumes localhost
-    cleanup-old-locals
+    git clone --quiet --bare $SCRATCH $REMOTE_REPO  # assume localhost
 }
 
 make-local-clones() {
@@ -118,6 +117,7 @@ make-local-clones() {
     # so logs reflect committers.
     # N.B.: `ssh localhost` must succeed for the clone to work.
     # To set ssh up on a Mac, search for "remote login" in System Settings
+    cleanup-old-locals
     for user in itchy scratchy; do
         local_repo=$TMPDIR/${user}
         git clone --quiet $remote_repo $local_repo

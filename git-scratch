@@ -1,74 +1,34 @@
-#!/bin/bash -eu
-
-# pick one of these two
-TMPDIR=/tmp               # if you want everything in /tmp
-TMPDIR=$PWD               # if you want everything right here
-
-SCRATCH=$TMPDIR/scratch         # the basic repo
-REMOTE_REPO=$TMPDIR/scratch.git # on your far-away, Git server, "localhost"
-ITCHY=$TMPDIR/itchy             # a local clone, by Itchy Mouse
-SCRATCHY=$TMPDIR/scratchy       # a local clone, by Scratchy Cat
+#!/bin/bash -eu -o pipefail
 
 die() { echo "$*"; exit 1; } >&2  # utility routine
 
-parse-args() {
-    # Process optional args
+cleanup-repo() {
+    # Clean out old copy of repo.
     #
-    # -h: help
-    # -b: make a branch
-    # -f: full repo. remote and two clones, by different users
-    #     implies '-b'
-	# bash lacks good arg parsing
-    usage="git scratch [-h | -b | -f ]"
-    while getopts ":hbf" opt; do
-        case $opt in          
-            h) echo "$usage" ; exit 0 ;;
-            b) branched=1; shift;;
-            f) remoted=1; branched=1; shift;;
-            \?) echo "Invalid option: -$OPTARG" >&2; die "$usage" ;;
-        esac
-    done
-    if [ $# -ne 0 ]; then
-        die "usage: $usage"
-    fi
+	# Remove file or directory if it exists.
+    # Succeed if successful, or if it was never even there.
+
+    repo=$1
+    rm -rf $repo                   # remove it
+	[ ! -e $repo ]                 # does it still exist?
 }
 
-cleanup() {
-	# Remove file if it exists.
-	if [ -e repo ]; then           # make sure it's gone
-		rm -r $repo                # remove it
-	fi
-
-cleanup-old-locals() {
-    # Clean out pre-existing experiments
-    #
-    # "Cleanliness is next to godliness, step 1"
-    for local_repo in $SCRATCH $ITCHY $SCRATCHY; do
-        if [ -e $local_repo ]; then           # make sure it's gone
-			rm -r $local_repo                    # remove it
-        fi
-    done
-}
-
-cleanup-old-remote() {
-    # Clean out pre-existing "remote"
-    #
-    # "Cleanliness is next to godliness, step 2"
-    # - Remove the "remote" if it's there
-    # - Make sure any required parent directories exist
-    remote_repo=$REMOTE_REPO
-    if [ -e $remote_repo ]; then           # make sure it's gone
-		rm -r $remote_repo
+all_repos="scratch itchy scratchy scratch.git"
+remove-old-repos() {
+	# Remove any old repos.
+	for repo in $all_repos; do
+		cleanup-repo $repo
+	done
 }
 
 make-scratch() {
-    # Make a minimal scratch repo
+    # Make a minimal scratch repo.
     #
     # Tagging the very first commit is always a good idea
     # You can find it with `git checkout $(git rev-list --all --reverse | head -1)`,
     # but `git checkout initial` is easier to remember. :-)
-    git init --quiet $SCRATCH          # make a scratch directory, under Git version control
-    pushd $SCRATCH > /dev/null         # go there
+    git init --quiet scratch           # make a scratch directory, under Git version control
+    pushd scratch > /dev/null          # go there
     touch .gitkeep                     # a hidden, empty file, to make something to add and commit.
     git add .gitkeep                   # mark it for commitment,
     git commit -q -m"Initial commit"   # and commit it!
@@ -84,14 +44,14 @@ make-simple-branch() {
     # - one conflict: different text on same line in README.md
     # - ends in master branch
 
-    pushd $SCRATCH > /dev/null                                          # go there
+    pushd scratch > /dev/null                                          # go there
     branchname=davidian                                                 # q.v.
     git checkout --quiet -b $branchname                                 # make a new branch
     echo "# Scratch branch $branchname for exploring Git" > README.md   # give it a README
     git add .                                                           # add "everything new/changed"
     git commit -q -m"Add README.md for branch $branchname"              # descriptive commit message
-    git checkout --quiet -                                                # checkout the previous branch
-    echo "# Scratch repo for exploring Git" > README.md                    # README for master branch
+    git checkout --quiet -                                              # checkout the previous branch
+    echo "# Scratch repo for exploring Git" > README.md                 # README for master branch
     git add .                                                           # add "everything new/changed"
     git commit -q -m"Add README.md"                                     # another descriptive message
     popd > /dev/null                                                    # get back, Jojo
@@ -100,14 +60,13 @@ make-simple-branch() {
 make-remote-repo() {
     # Initialize remote repo from local, then remove local
     #
-    # - remove old remote before making a new one,
     # - create a new remote from a local
     # - cleanup all locals
     # order is important here.
     # N.B.: this assumes the remote repo is really created on localhost
 
-    cleanup-old-remote
-    git clone --quiet --bare $SCRATCH $REMOTE_REPO  # assume localhost
+    git clone --quiet --bare scratch  # assume localhost
+    rm -rf scratch
 }
 
 make-local-clones() {
@@ -117,28 +76,54 @@ make-local-clones() {
     # so logs reflect committers.
     # N.B.: `ssh localhost` must succeed for the clone to work.
     # To set ssh up on a Mac, search for "remote login" in System Settings
-    cleanup-old-locals
     for user in itchy scratchy; do
-        local_repo=$TMPDIR/${user}
-        git clone --quiet $remote_repo $local_repo
+        local_repo=$user
+        git clone --quiet scratch.git $local_repo
         git -C $local_repo config user.email "$user@localhost"
     done
     git -C itchy config user.name "Itchy Mouse"
     git -C scratchy config user.name "Scratchy Cat"
 }
 
-parse-args "$@"
-starding_dir=$PWD    # lest we forget
-cleanup-old-locals
-make-scratch
 
-if [ "${branched:-}" ]; then
-    make-simple-branch
-fi
-if ! [ "${remoted:-}" ]; then  # we're done!
-    exit 0
-fi
 
-# making full remote and local clones
-make-remote-repo
-make-local-clones
+if [[ $BASH_SOURCE == $0 ]]; then
+	tmpdir=$PWD
+
+	parse-args() {
+		# Process optional args
+		#
+		# -h: help
+		# -b: make a branch
+		# -f: full repo. remote and two clones, by different users
+		#     implies '-b'
+		# I don't yet have good tests for this
+		# bash lacks good arg parsing
+		usage="git scratch [-h | -b | -f ]"
+		while getopts ":hbf" opt; do
+			case $opt in          
+				h) echo "$usage" ; exit 0 ;;
+				b) branched=1; shift;;
+				f) remoted=1; branched=1; shift;;
+				\?) echo "Invalid option: -$OPTARG" >&2; die "$usage" ;;
+			esac
+		done
+		if [ $# -ne 0 ]; then
+			die "usage: $usage"
+		fi
+	}
+
+	parse-args "$@"
+	cd $tmpdir
+	remove-old-repos
+	make-scratch
+	if [ "${branched:-}" ]; then
+		make-simple-branch
+	fi
+	if ! [ "${remoted:-}" ]; then  # we're done!
+		exit 0
+	fi
+	# making full remote and local clones
+	make-remote-repo
+	make-local-clones
+fi

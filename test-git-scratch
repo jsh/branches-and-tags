@@ -1,7 +1,18 @@
 #!/bin/bash -eu
 
-source nscratch
-source status
+source git-scratch
+
+#!/usr/bin/bash
+fail() {
+    echo "$*"
+    echo "${FUNCNAME[1]}: FAIL"
+    exit 1
+}
+
+pass() {
+    echo "${FUNCNAME[1]}: PASS"
+}
+
 expected=".gitkeep
 README.md"
 
@@ -12,13 +23,13 @@ test-cleanup-repo()
     install -d foo/bar
     chmod 000 foo
     ! cleanup-repo foo 2> /dev/null ||
-        die "cleanup director with perms 000 succeeds"
+        fail "cleanup director with perms 000 succeeds"
 
     chmod 777 foo
     cleanup-repo foo
-    [[ ! -e foo ]] || die "after cleanup, foo present"
+    [[ ! -e foo ]] || fail "after cleanup, foo present"
 
-    cleanup-repo foo || die "cleanup non-existent foo fails"
+    cleanup-repo foo || fail "cleanup non-existent foo fails"
     pass
 }
 
@@ -31,9 +42,9 @@ test-remove-old-repos()
     done
     remove-old-repos
     for repo in $all_repos; do
-        [[ ! -d $repo ]] || die "$repo still present"
+        [[ ! -d $repo ]] || fail "$repo still present"
     done
-    [[ -d sentinel ]] || die "sentinel missing"
+    [[ -d sentinel ]] || fail "sentinel missing"
     rm -rf sentinel
     pass
 }
@@ -41,15 +52,15 @@ test-remove-old-repos()
 test-make-scratch() {
     make-scratch 
 		[[ $(git -C scratch rev-parse --git-dir 2> /dev/null) == .git ]] || 
-        die "missing scratch repo"
+        fail "missing scratch repo"
     [[ $(git -C scratch tag -l) == initial ]] ||
-        die "initial tag missing"
+        fail "initial tag missing"
     [[ ! "$(ls scratch)" ]] ||
-        die "non-hidden files in scratch"
+        fail "non-hidden files in scratch"
     [[ "$(git -C scratch ls-files)" == .gitkeep ]] ||
-        die "unexpected output from `git ls-files`"
+        fail "unexpected output from `git ls-files`"
     [[ ! "$(git -C scratch status -u -s)" ]] ||
-        die "untracked files"
+        fail "untracked files"
     rm -rf scratch
     pass
 }
@@ -58,21 +69,45 @@ test-make-simple-branch() {
 	make-scratch
 	make-simple-branch
 	[[ $( git -C scratch branch -a | wc -l) -eq 2 ]] ||
-		die "wrong number of branches"
+		fail "wrong number of branches"
 	[[ $(git -C scratch branch --show-current) == master ]] ||
-		die "current branch not master"
+		fail "current branch not master"
 	[[ $(git -C scratch ls-files) == $expected ]] ||
-		die "unexpected files $(git -C scratch ls-files)"
+		fail "unexpected files $(git -C scratch ls-files)"
 	git -C scratch checkout davidian 2> /dev/null ||
-	    die "cannot checkout davidian"
+	    fail "cannot checkout davidian"
 	[[ $(git -C scratch ls-files) == $expected ]] ||
-		die "unexpected files $(git -C scratch ls-files)"
+		fail "unexpected files $(git -C scratch ls-files)"
 	pass
 }
 
-rm -rf scratch
+test-make-remote-repo() {
+    make-remote-repo
+    [[ -d scratch.git ]] ||
+        fail "remote repo not created"
+    [[ ! -d scratch ]] ||
+        fail "local copy not removed"
+	[[ $(git -C scratch.git rev-parse --is-bare-repository) == true ]] ||
+		fail "scratch.git not a bare repository"
+    pass
+}
+
+test-make-local-clones() {
+    make-local-clones
+    for local_clone in itchy scratchy; do
+        git -C $local_clone remote -v | grep -F -q $PWD/scratch.git ||
+			fail "remote for $local_clone incorrect"
+		[[ $(git -C $local_clone rev-parse --is-bare-repository) == false ]] ||
+			fail "$local_clone a bare repository"
+    done
+    pass
+}
+
 test-cleanup-repo
 test-remove-old-repos
 test-make-scratch
 test-make-simple-branch
+test-make-remote-repo
+test-make-local-clones
+remove-old-repos
 pass

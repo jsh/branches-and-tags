@@ -1,5 +1,8 @@
 #!/bin/bash -eu -o pipefail
 
+tmpdir=$PWD                     # as good a place as any to work
+cd $tmpdir                      # so work there
+
 die() { echo "$*"; exit 1; } >&2  # utility routine
 
 cleanup-repo() {
@@ -78,7 +81,7 @@ make-local-clones() {
     # To set ssh up on a Mac, search for "remote login" in System Settings
     for user in itchy scratchy; do
         local_repo=$user
-        git clone --quiet scratch.git $local_repo
+        git clone --quiet ssh://localhost/$tmpdir/scratch.git $local_repo
         git -C $local_repo config user.email "$user@localhost"
     done
     git -C itchy config user.name "Itchy Mouse"
@@ -112,8 +115,6 @@ parse-args() {
 
 # The whole Megillah
 if [[ $BASH_SOURCE == $0 ]]; then
-	tmpdir=$PWD                     # as good a place as any to work
-	cd $tmpdir                      # so work there
 
 	parse-args "$@"                 # parse command-line args and store values
 	remove-old-repos                # cleanliness is next to godliness

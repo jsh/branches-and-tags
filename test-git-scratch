@@ -95,7 +95,7 @@ test-make-remote-repo() {
 test-make-local-clones() {
     make-local-clones
     for local_clone in itchy scratchy; do
-        git -C $local_clone remote -v | grep -F -q $PWD/scratch.git ||
+        git -C $local_clone remote -v | grep -F -q scratch.git ||
 			fail "remote for $local_clone incorrect"
 		[[ $(git -C $local_clone rev-parse --is-bare-repository) == false ]] ||
 			fail "$local_clone a bare repository"

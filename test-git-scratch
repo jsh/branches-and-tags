@@ -99,20 +99,26 @@ test-make-local-clones() {
 			fail "remote for $local_clone incorrect"
 		[[ $(git -C $local_clone rev-parse --is-bare-repository) == false ]] ||
 			fail "$local_clone a bare repository"
+		[[ $(git -C $local_clone config user.email) == $local_clone@localhost ]] ||
+			fail "email for $local_clone set incorrectly"
     done
+	[[ $(git -C itchy config user.name) == "Itchy Mouse" ]] ||
+		fail "user name for 'itchy' set incorrectly"
+	[[ $(git -C scratchy config user.name) == "Scratchy Cat" ]] ||
+		fail "user name for 'scratchy' set incorrectly"
     pass
 }
 
 test-parse-args() {
-    # Test some of the argument parsing: -b, -f, and -c
+    # Test that some args set variables correctly: -b, -f, and -c
     parse-args "-b"
     [[ $branched -eq 1 ]] ||
         fail "parse-args -b did not set '$branched' "
     parse-args "-f"
-    [[ $branched -eq 1 ]] ||
-        fail "parse-args -b did not set '$branched' "
     [[ $remoted -eq 1 ]] ||
         fail "parse-args -f did not set '$remoted' "
+    [[ $branched -eq 1 ]] ||
+        fail "parse-args -b did not set '$branched' "
     parse-args "-c"
     [[ $clean -eq 1 ]] ||
         fail "parse-args did not set '$clean' "

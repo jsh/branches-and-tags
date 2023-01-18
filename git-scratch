@@ -113,9 +113,9 @@ parse-args() {
 # The whole Megillah
 if [[ $BASH_SOURCE == $0 ]]; then
 	tmpdir=$PWD                     # as good a place as any to work
+	cd $tmpdir                      # so work there
 
 	parse-args "$@"                 # parse command-line args and store values
-	cd $tmpdir
 	remove-old-repos                # cleanliness is next to godliness
 	if [[ "${clean:-}" ]]; then     # clean out the old, and we're done
 		exit 0

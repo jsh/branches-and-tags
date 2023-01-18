@@ -13,7 +13,7 @@ cleanup-repo() {
 	[ ! -e $repo ]                 # does it still exist?
 }
 
-all_repos="scratch itchy scratchy scratch.git"
+all_repos="scratch itchy scratchy scratch.git"     # every repo potentially used by this tool
 remove-old-repos() {
 	# Remove any old repos.
 	for repo in $all_repos; do
@@ -44,7 +44,7 @@ make-simple-branch() {
     # - one conflict: different text on same line in README.md
     # - ends in master branch
 
-    pushd scratch > /dev/null                                          # go there
+    pushd scratch > /dev/null                                           # go there
     branchname=davidian                                                 # q.v.
     git checkout --quiet -b $branchname                                 # make a new branch
     echo "# Scratch branch $branchname for exploring Git" > README.md   # give it a README
@@ -61,7 +61,7 @@ make-remote-repo() {
     # Initialize remote repo from local, then remove local
     #
     # - create a new remote from a local
-    # - cleanup all locals
+    # - remove original repo
     # order is important here.
     # N.B.: this assumes the remote repo is really created on localhost
 
@@ -85,12 +85,11 @@ make-local-clones() {
     git -C scratchy config user.name "Scratchy Cat"
 }
 
-
-
+# The whole Megillah
 if [[ $BASH_SOURCE == $0 ]]; then
-	tmpdir=$PWD
+	tmpdir=$PWD                     # as good a place as any to work
 
-	parse-args() {
+	parse-args() {                  # TODO: test this
 		# Process optional args
 		#
 		# -h: help
@@ -99,12 +98,13 @@ if [[ $BASH_SOURCE == $0 ]]; then
 		#     implies '-b'
 		# I don't yet have good tests for this
 		# bash lacks good arg parsing
-		usage="git scratch [-h | -b | -f ]"
-		while getopts ":hbf" opt; do
+		usage="git scratch [-h | -b | -f | -c ]"
+		while getopts ":hbfc" opt; do
 			case $opt in          
 				h) echo "$usage" ; exit 0 ;;
 				b) branched=1; shift;;
 				f) remoted=1; branched=1; shift;;
+				c) clean=1; shift;;
 				\?) echo "Invalid option: -$OPTARG" >&2; die "$usage" ;;
 			esac
 		done
@@ -113,17 +113,20 @@ if [[ $BASH_SOURCE == $0 ]]; then
 		fi
 	}
 
-	parse-args "$@"
+	parse-args "$@"                 # parse command-line args and store values
 	cd $tmpdir
-	remove-old-repos
-	make-scratch
+	remove-old-repos                # cleanliness is next to godliness
+	if [[ "${clean:-}" ]]; then     # clean out the old, and we're done
+		exit 0
+	fi
+	make-scratch                   # the default
 	if [ "${branched:-}" ]; then
-		make-simple-branch
+		make-simple-branch         # add a branch
 	fi
 	if ! [ "${remoted:-}" ]; then  # we're done!
 		exit 0
 	fi
-	# making full remote and local clones
+	# make full remote and local clones
 	make-remote-repo
 	make-local-clones
 fi

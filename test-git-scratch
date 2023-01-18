@@ -1,6 +1,6 @@
 #!/bin/bash -eu
 
-source git-scratch
+source ./git-scratch
 
 #!/usr/bin/bash
 fail() {

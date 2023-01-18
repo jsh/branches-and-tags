@@ -85,33 +85,34 @@ make-local-clones() {
     git -C scratchy config user.name "Scratchy Cat"
 }
 
+parse-args() {
+	# Process optional args
+	#
+	# -h: help
+	# -b: make a branch
+	# -f: full repo. remote and two clones, by different users
+	#     implies '-b'
+	# I don't yet have good tests for this
+	# bash lacks good arg parsing
+	usage="git scratch [-h | -b | -f | -c ]"
+	while getopts ":hbfc" opt; do
+		case $opt in          
+			h) echo "$usage" ; exit 0 ;;
+			b) branched=1; shift;;
+			f) remoted=1; branched=1; shift;;
+			c) clean=1; shift;;
+			\?) echo "Invalid option: -$OPTARG" >&2; die "$usage" ;;
+		esac
+	done
+	if [ $# -ne 0 ]; then
+		die "usage: $usage"
+	fi
+}
+
+
 # The whole Megillah
 if [[ $BASH_SOURCE == $0 ]]; then
 	tmpdir=$PWD                     # as good a place as any to work
-
-	parse-args() {                  # TODO: test this
-		# Process optional args
-		#
-		# -h: help
-		# -b: make a branch
-		# -f: full repo. remote and two clones, by different users
-		#     implies '-b'
-		# I don't yet have good tests for this
-		# bash lacks good arg parsing
-		usage="git scratch [-h | -b | -f | -c ]"
-		while getopts ":hbfc" opt; do
-			case $opt in          
-				h) echo "$usage" ; exit 0 ;;
-				b) branched=1; shift;;
-				f) remoted=1; branched=1; shift;;
-				c) clean=1; shift;;
-				\?) echo "Invalid option: -$OPTARG" >&2; die "$usage" ;;
-			esac
-		done
-		if [ $# -ne 0 ]; then
-			die "usage: $usage"
-		fi
-	}
 
 	parse-args "$@"                 # parse command-line args and store values
 	cd $tmpdir

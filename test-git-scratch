@@ -103,11 +103,28 @@ test-make-local-clones() {
     pass
 }
 
+test-parse-args() {
+    # Test some of the argument parsing: -b, -f, and -c
+    parse-args "-b"
+    [[ $branched -eq 1 ]] ||
+        fail "parse-args -b did not set '$branched' "
+    parse-args "-f"
+    [[ $branched -eq 1 ]] ||
+        fail "parse-args -b did not set '$branched' "
+    [[ $remoted -eq 1 ]] ||
+        fail "parse-args -f did not set '$remoted' "
+    parse-args "-c"
+    [[ $clean -eq 1 ]] ||
+        fail "parse-args did not set '$clean' "
+    pass
+}
+
 test-cleanup-repo
 test-remove-old-repos
 test-make-scratch
 test-make-simple-branch
 test-make-remote-repo
 test-make-local-clones
+test-parse-args
 remove-old-repos
 pass

@@ -1,6 +1,6 @@
 #!/bin/bash -eu
 
-die() { echo "$*"; exit 1; } >&2
+warn() { echo "$*"; } >&2
 
 parse-args() {
     # Process optional args
@@ -24,10 +24,11 @@ add-and-commit() {
     #
     # Normally, these are separate steps,
     # here, we're just cramming stuff in.
-    commit_message="$@"             # capture passed-in commit message
-    git add .                       # add everything
-    git commit -m"$commit_message"  # commit it
-    if [ "${tag:-}" ]; then         # tag if requested
+    commit_message="$@"                  # capture passed-in commit message
+    git add .                            # add everything
+    git commit -q -m"$commit_message" || # commit it
+		return 1
+    if [ "${tag:-}" ]; then              # tag if requested
         git tag $tag
     fi
 }
@@ -41,36 +42,44 @@ add-canonical-program() {
     # The classic, hello, world as a shell script
     echo 'echo hello, world' > hello        # create the program
     chmod +x hello                          # make it executable
-    diff - <(./hello) <<< "hello, world"    # test it
     add-and-commit "the canonical program"  # commit it
-    git add .                               # add it
-    git commit -m"the canonical program"    # commit it
 }
 
 create-file-or-directory() {
     # Create the named file/directory
     name=$1                                       # capture passed-in name
-    [ -e "$name" ] && die "$name already exists"  # tread not on what's there
-    [ ${name:0:1} == '/' ] &&                     # first character is a '/'? (`addfile /foo`)
-        die "relative paths only"                 # only allow relative paths
+    if [ -e "$name" ]; then
+		warn "$name already exists"               # tread not on what's there
+		return 1
+	fi
+    if [ ${name:0:1} == '/' ]; then               # first character is a '/'? (`addfile /foo`)
+        warn "relative paths only"                # only allow relative paths
+		return 1
+	fi
     if [ ${name: -1:1} == '/' ]; then             # last character is a '/'? (`addfile foo/`)
-        install -d $name                          # add empty directory
+        install -d $name ||
+			return 1				              # add empty directory
         > $name/.gitkeep                          # empty hidden file because Git ignores empty directories
     else
         install -d $(dirname $name)               # create file in directory
         echo "file $name" > $name                 # real contents
     fi
+	return 0
 }
 
-sanity-checks
-parse-args "$@"
 
-if [ $# -eq 0 ]; then
-    add-canonical-program    # we're done!
-    exit 0              
+# The whole Megillah
+if [[ $BASH_SOURCE == $0 ]]; then
+	sanity-checks
+	parse-args "$@"
+
+	if [ $# -eq 0 ]; then
+		add-canonical-program    # we're done!
+		exit 0              
+	fi
+
+	for name in "$@"; do    # create each name on command line
+		create-file-or-directory $name # || die "can't create $name"
+	done
+	add-and-commit "add elements(s) $@"            # add & commit all
 fi
-
-for name in "$@"; do    # create each name on command line
-    create-file-or-directory $name
-done
-add-and-commit "add elements(s) $@"            # add & commit all

@@ -1,0 +1,89 @@
+#!/bin/bash -eu
+
+source ./git-addfile
+
+#!/usr/bin/bash
+fail() {
+    echo "$*"
+    echo "${FUNCNAME[1]}: FAIL"
+    exit 1
+}
+
+pass() {
+    echo "${FUNCNAME[1]}: PASS"
+}
+
+test-sanity-checks() {
+    sanity-checks && fail "sanity-check should not succeed in non-git-controlled repo"
+    git init -q .
+    sanity-checks || fail "sanity check should succeed in git-controlled repo"
+    pass
+}
+
+test-add-canonical-program() {
+    rm -rf hello
+    add-canonical-program
+    diff - <(./hello) <<< "hello, world"    # test executable
+    [[ ! "$(git status -s)" ]] || fail "'git status -s' should return empty"
+    pass
+}
+
+test-create-file-or-directory() {
+    file=dummy/foo/bar/mumble
+    create-file-or-directory /$file 2> /dev/null &&
+        fail "created absolute path /$file"
+    create-file-or-directory $file ||
+        fail "fail to create file '$file'"
+    echo "file $file" | diff -q - $file || fail "wrong contents, file '$file'"
+    create-file-or-directory $file 2> /dev/null &&
+        fail "shouild not overwrite existing file "
+    create-file-or-directory $file/ 2> /dev/null &&
+        fail "shouild not overwrite existing file with directory"
+    rm -rf $file
+    if create-file-or-directory $file/; then
+        [[ -d $file ]] ||
+            fail "did not create directory $file/"
+        [[ -e $file/.gitkeep ]] ||
+            fail "did not populate directory $file/"
+        [[ ! -s dummy/.gitkeep ]] ||
+            fail "size of .gitkeep $(cat dummy/.gitkeep | wc -c)"
+    fi
+    rm -rf ${file%%/*}
+    pass
+}
+
+test-add-and-commit() {
+    add-and-commit "some comment" &> /dev/null &&
+        fail "succeeded with nothing to commit"
+    file=dummy
+    comment="a dummy file"
+    create-file-or-directory $file
+    add-and-commit "$comment" || fail "cannot add and commit '$file'"
+    [[ ! "$(git status -s)" ]] || fail "'git status -s' should return empty"
+    [[ -e $file ]] || fail "$file vanished after add-and-commit"
+    { git log -1 | grep -q "$comment"; } || fail "bad log comment"
+    pass
+}
+
+test-parse-args() {
+    # Test that some args set variables correctly: -t
+	tagname=dummy-tag
+    parse-args -t $tagname
+    [[ "$tag" = "$tagname" ]] ||
+        fail "'parse-args -t $tagname' set tag to '$tag'"
+    pass
+}
+
+TESTDIR=/tmp/test-git-addfile
+rm -rf $TESTDIR
+mkdir $TESTDIR
+cd $TESTDIR
+test-sanity-checks
+test-add-canonical-program
+test-create-file-or-directory
+test-add-and-commit
+test-parse-args
+cd -
+rm -rf $TESTDIR
+
+pass

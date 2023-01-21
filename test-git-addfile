@@ -28,17 +28,29 @@ test-add-canonical-program() {
     pass
 }
 
+test-permitted-pathname() {
+    file=dummy
+    filename_with_blanks="my file"
+    rm -rf $file $filename_with_blanks
+    permitted-pathname /$file 2> /dev/null &&
+        fail "permit absolute path /$file"
+    permitted-pathname "$filename_with_blanks" 2> /dev/null &&
+        fail "permit filename '$filename_with_blanks'"
+    touch $file
+    permitted-pathname $file 2> /dev/null &&
+        fail "permit overwrite existing file "
+    permitted-pathname $file/ 2> /dev/null &&
+        fail "permit overwrite existing file with directory"
+    rm -rf $file
+    pass
+}
+
 test-create-file-or-directory() {
     file=dummy/foo/bar/mumble
-    create-file-or-directory /$file 2> /dev/null &&
-        fail "created absolute path /$file"
+    rm -rf $file
     create-file-or-directory $file ||
         fail "fail to create file '$file'"
     echo "file $file" | diff -q - $file || fail "wrong contents, file '$file'"
-    create-file-or-directory $file 2> /dev/null &&
-        fail "shouild not overwrite existing file "
-    create-file-or-directory $file/ 2> /dev/null &&
-        fail "shouild not overwrite existing file with directory"
     rm -rf $file
     if create-file-or-directory $file/; then
         [[ -d $file ]] ||
@@ -46,7 +58,7 @@ test-create-file-or-directory() {
         [[ -e $file/.gitkeep ]] ||
             fail "did not populate directory $file/"
         [[ ! -s dummy/.gitkeep ]] ||
-            fail "size of .gitkeep $(cat dummy/.gitkeep | wc -c)"
+            fail "size of .gitkeep $(cat dummy/.gitkeep | wc -c) non-zero"
     fi
     rm -rf ${file%%/*}
     pass
@@ -74,16 +86,17 @@ test-parse-args() {
     pass
 }
 
-TESTDIR=/tmp/test-git-addfile
+TESTDIR=/tmp/$(basename $0)
 rm -rf $TESTDIR
 mkdir $TESTDIR
-cd $TESTDIR
+pushd $TESTDIR > /dev/null
 test-sanity-checks
 test-add-canonical-program
+test-permitted-pathname
 test-create-file-or-directory
 test-add-and-commit
 test-parse-args
-cd -
+popd > /dev/null
 rm -rf $TESTDIR
 
 pass

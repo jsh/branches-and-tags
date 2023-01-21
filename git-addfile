@@ -2,6 +2,11 @@
 
 warn() { echo "$*"; } >&2
 
+sanity-checks() {
+    # Does it make sense to run this script?
+    git rev-parse --git-dir &> /dev/null # in a git repo?
+}
+
 parse-args() {
     # Process optional args
     #
@@ -33,11 +38,6 @@ add-and-commit() {
     fi
 }
 
-sanity-checks() {
-    # Does it make sense to run this script?
-    git rev-parse --git-dir &> /dev/null # in a git repo?
-}
-
 add-canonical-program() {
     # The classic, hello, world as a shell script
     echo 'echo hello, world' > hello        # create the program
@@ -45,26 +45,41 @@ add-canonical-program() {
     add-and-commit "the canonical program"  # commit it
 }
 
+permitted-pathname() {
+	# Check to make sure it's okay to create the path
+	name="$1"
+    if [[ ${name} =~ ' ' ]]; then               # blanks not permitted in names
+		warn "blanks not permitted in '$name'"
+		return 1
+	fi
+    if [[ ${name:0:1} == '/' ]]; then             # first character is a '/'? (`addfile /foo`)
+        warn "'$name' must be a relative path"    # only allow relative paths
+		return 1
+	fi
+	# don't tread on what's already there
+	if [[ -e "${name}" ]]; then
+		warn "cannot overwrite '$name'"           # don't tread on me
+		return 1
+	fi
+	if [[ ${name: -1} == '/' ]] &&                # trailing slash
+		[[ -e "${name%*/}" ]]; then
+			warn "cannot overwrite '${name%*/}' with directory '$name'"  # don't tread on me
+			return 1
+	fi
+}
+
 create-file-or-directory() {
     # Create the named file/directory
     name=$1                                       # capture passed-in name
-    if [ -e "$name" ]; then
-		warn "$name already exists"               # tread not on what's there
-		return 1
-	fi
-    if [ ${name:0:1} == '/' ]; then               # first character is a '/'? (`addfile /foo`)
-        warn "relative paths only"                # only allow relative paths
-		return 1
-	fi
-    if [ ${name: -1:1} == '/' ]; then             # last character is a '/'? (`addfile foo/`)
-        install -d $name ||
-			return 1				              # add empty directory
-        > $name/.gitkeep                          # empty hidden file because Git ignores empty directories
+	permitted-pathname $name || return 1          # make sure it's okay
+
+    if [ ${name: -1} == '/' ]; then               # last character is a '/'? (`addfile foo/`)
+		mkdir -p $name                            # create the directory path
+        > $name/.gitkeep                          # create empty hidden file because Git ignores empty directories
     else
-        install -d $(dirname $name)               # create file in directory
+		mkdir -p $(dirname $name)                 # create all parent directories
         echo "file $name" > $name                 # real contents
     fi
-	return 0
 }
 
 
@@ -79,7 +94,8 @@ if [[ $BASH_SOURCE == $0 ]]; then
 	fi
 
 	for name in "$@"; do    # create each name on command line
-		create-file-or-directory $name # || die "can't create $name"
+		create-file-or-directory $name ||
+			die "can't create $name"
 	done
 	add-and-commit "add elements(s) $@"            # add & commit all
 fi

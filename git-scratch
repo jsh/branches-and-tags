@@ -1,4 +1,5 @@
 #!/bin/bash -eu -o pipefail
+# exit immediately on errors, undefined variables, or any failures in a pipeline
 
 tmpdir=$PWD                     # as good a place as any to work
 cd $tmpdir                      # so work there
@@ -8,12 +9,12 @@ die() { echo "$*"; exit 1; } >&2  # utility routine
 cleanup-repo() {
     # Clean out old copy of repo.
     #
-	# Remove file or directory if it exists.
+    # Remove file or directory if it exists.
     # Succeed if successful, or if it was never even there.
 
     repo=$1
     rm -rf $repo                   # remove it
-	[ ! -e $repo ]                 # does it still exist?
+	[ ! -e $repo ]             # does it still exist?
 }
 
 all_repos="scratch itchy scratchy scratch.git"     # every repo potentially used by this tool
@@ -123,7 +124,7 @@ if [[ $BASH_SOURCE == $0 ]]; then
 	fi
 	make-scratch                   # the default
 	if [ "${branched:-}" ]; then
-		make-simple-branch         # add a branch
+		make-simple-branch     # add a branch
 	fi
 	if ! [ "${remoted:-}" ]; then  # we're done!
 		exit 0

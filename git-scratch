@@ -20,6 +20,7 @@ cleanup-repo() {
 all_repos="scratch itchy scratchy scratch.git"     # every repo potentially used by this tool
 remove-old-repos() {
 	# Remove any old repos.
+	
 	for repo in $all_repos; do
 		cleanup-repo $repo
 	done
@@ -31,6 +32,7 @@ make-scratch() {
     # Tagging the very first commit is always a good idea
     # You can find it with `git checkout $(git rev-list --all --reverse | head -1)`,
     # but `git checkout initial` is easier to remember. :-)
+    
     git init --quiet scratch           # make a scratch directory, under Git version control
     pushd scratch > /dev/null          # go there
     touch .gitkeep                     # a hidden, empty file, to make something to add and commit.
@@ -80,6 +82,7 @@ make-local-clones() {
     # so logs reflect committers.
     # N.B.: `ssh localhost` must succeed for the clone to work.
     # To set ssh up on a Mac, search for "remote login" in System Settings
+    
     for user in itchy scratchy; do
         local_repo=$user
         git clone --quiet ssh://localhost/$tmpdir/scratch.git $local_repo
@@ -98,6 +101,7 @@ parse-args() {
 	#     implies '-b'
 	# I don't yet have good tests for this
 	# bash lacks good arg parsing
+	
 	usage="git scratch [-h | -b | -f | -c ]"
 	while getopts ":hbfc" opt; do
 		case $opt in          

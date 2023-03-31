@@ -48,15 +48,17 @@ Create a simple playground.
 
 - `git scratch`: Create a scratch repo, with one, empty, hidden file, `.gitkeep`.
 
-Useful for simple questions about Git.
+For simple experiments with Git and its hidden, .git directory.
+
 - `git scratch -b`: Create a branched scratch repo with `master` and `davidian` branches,
 each with a distinct `README.md` (so the two commits conflict).
 
-Useful for questions about branching, tagging, and merging.
-- `git scratch -r`: Create a repo with a bare remote, on that "far-away" Git server, `localhost`,
+For playing with branching, tagging, merging, and rebasing.
+
+- `git scratch -f`: A full system. Create a bare remote, on that "far-away" Git server, `localhost`,
 then create two local clones, `itchy`, owned by Itchy Mouse, and `scratchy`, owned by Scratchy Cat.
 
-Useful for exploring the full panoply of Git commits, fetches, pulls, pushes, merges, and so on, by multiple users,
+For exploring the full panoply of Git commits, fetches, pulls, pushes, merges, and so on, by multiple users,
 with a single, bare "server" repo for synchronization, and for comparing and contrasting client and server repos.
 
-The `-r` option implies `-b` (the repos are all branched).
+The `-f` option implies `-b` (the repos are all branched).
